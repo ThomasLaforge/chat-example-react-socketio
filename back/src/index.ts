@@ -15,36 +15,34 @@ const io = new Server(httpServer, {
   }
 });
 
-let lastSocketId: string = '';
+let players = [];
+let debutPartie: number | null = null;
+let randomNumber = Math.floor(Math.random() * 100) + 1;
 
 io.on('connection', (socket) => {
-  console.log('a user connected');
-  lastSocketId = socket.id;
+  console.log('a user connected', socket.id);
+  players.push(socket.id);
+  console.log(players.length)
+  
+  if(players.length === 3){
+    console.log('start game')
+    io.emit('startGame');
+    debutPartie = Date.now();
+  }
 
-  socket.on('chat message', (msg) => {
-    console.log('every body message: ' + msg);
-    io.emit('chat message', msg);
-  });
-
-  socket.on('send-others-a-message', (msg) => {
-    console.log('others - message: ' + msg);
-    socket.broadcast.emit('chat message', msg);
-  })
-
-  socket.on('send-to-last-socket', (msg) => {
-    if(lastSocketId !== ''){
-      console.log('last socket - message: ' + msg);
-      io.to(lastSocketId).emit('chat message', msg);
+  socket.on('guessNumber', (num: number) => {
+    if(num < randomNumber){
+      socket.emit('hint', 'Try higher');
     }
-  })
-
-  socket.on('disconnect', () => {
-    console.log('user disconnected');
+    else if(num > randomNumber){
+      socket.emit('hint', 'Try lower');
+    }
+    else {
+      const deltaTime = Date.now() - (debutPartie as number);
+      io.emit('endGame', 'la partie est terminée. Le socket id gagnant est : ' + socket.id + ' ! il a gagné en ' + deltaTime + ' ms');
+    }
   });
-});
 
-app.get("/", (req, res) => {
-  res.send("Hello World!");
 });
 
 httpServer.listen(process.env.PORT, () => {

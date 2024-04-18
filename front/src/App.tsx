@@ -3,64 +3,58 @@ import './App.css'
 import { socket } from './modules/socket'
 
 function App() {
-  const [messageList, updateMessageList] = useState<string[]>([])
-  const [newMessage, updateNewMessage] = useState<string>('')
+  const [endGameSentence, setEndGameSentence] = useState('')
+  const [gameInfo, setGameInfo] = useState('En attente de joueurs')
+  const [guessNumber, setGuessNumber] = useState("")
 
   useEffect(() => {
-    socket.on('chat message', (msg: string) => {
-      console.log('new message received', msg)
-      updateMessageList([...messageList, msg])
+    socket.off('startGame')
+    socket.off('hint')
+    socket.off('endGame')
+
+    socket.on('startGame', () => {
+      console.log('start game')
+      setGameInfo('Game started - find the number between 1 and 100')
     })
 
+    socket.on('hint', (hint: string) => {
+      setGameInfo(hint)
+    })
+
+    socket.on('endGame', (sentence: string) => {
+      setEndGameSentence(sentence)
+    })
+    
     return () => {
-      socket.off('chat message')
+      socket.off('startGame')
+      socket.off('hint')
+      socket.off('endGame')
     }
-  })
+  }, [])
+
+  const handleChangeGuessNumber = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setGuessNumber(e.target.value)
+  }
+
+  const handleSendGuessNumber = () => {
+    socket.emit('guessNumber', parseInt(guessNumber))
+  }
 
   return (
     <div>
-      <ul>
-        {messageList.map((message, index) => (
-          <li key={index}>{message}</li>
-        ))}
-      </ul>
-      <form action="">
-        <input 
-          type="text"
-          id="message" 
-          onChange={(e) => updateNewMessage(e.target.value)}
-          value={newMessage} 
-        />
-        <button
-          onClick={(e) => {
-            e.preventDefault()
-            socket.emit('chat message', newMessage)
-            updateNewMessage('')
-          }}
-        >
-          Send
-        </button>
-        <button
-          onClick={(e) => {
-            e.preventDefault()
-            socket.emit('send-others-a-message', newMessage)
-            updateNewMessage('')
-          }}
-        >
-          Send to others
-        </button>
-        
-        <button
-          onClick={(e) => {
-            e.preventDefault()
-            socket.emit('send-to-last-socket', newMessage)
-            updateNewMessage('')
-          }}
-        >
-          Send to last socket
-        </button>
-      </form>
-
+      {endGameSentence !== '' ? (
+        <div>{endGameSentence}</div>
+      ) : (
+        <div>
+          <div>{gameInfo}</div>
+          <input 
+            type="text" 
+            value={guessNumber} 
+            onChange={handleChangeGuessNumber} 
+          />
+          <button onClick={handleSendGuessNumber}>Try</button>
+        </div>
+      )}  
     </div>
   )
 }
