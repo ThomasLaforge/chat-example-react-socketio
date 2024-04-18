@@ -15,35 +15,55 @@ const io = new Server(httpServer, {
   }
 });
 
-let players = [];
-let debutPartie: number | null = null;
-let randomNumber = Math.floor(Math.random() * 100) + 1;
+let players: string[] = [];
+let grid : (null | 'X' | 'O')[][] = [
+  [null, null, null],
+  [null, null, null],
+  [null, null, null],
+];
 
 io.on('connection', (socket) => {
   console.log('a user connected', socket.id);
   players.push(socket.id);
-  console.log(players.length)
   
-  if(players.length === 3){
-    console.log('start game')
-    io.emit('startGame');
-    debutPartie = Date.now();
+  if(players.length === 2){
+    socket.emit('startGame', true);
+    socket.broadcast.emit('startGame', false);
   }
 
-  socket.on('guessNumber', (num: number) => {
-    if(num < randomNumber){
-      socket.emit('hint', 'Try higher');
-    }
-    else if(num > randomNumber){
-      socket.emit('hint', 'Try lower');
-    }
-    else {
-      const deltaTime = Date.now() - (debutPartie as number);
-      io.emit('endGame', 'la partie est terminée. Le socket id gagnant est : ' + socket.id + ' ! il a gagné en ' + deltaTime + ' ms');
+  socket.on('play', (i: number, j: number) => {
+    const isFirstPlayer = players[0] === socket.id;
+
+    grid[i][j] = isFirstPlayer ? 'X' : 'O';
+    
+    socket.emit('played', [...grid], false);
+    socket.broadcast.emit('played', [...grid], true);
+    
+    if(checkWin()){
+      socket.emit('win');
+      socket.broadcast.emit('lost');
     }
   });
 
 });
+
+function checkWin(){
+  for(let i = 0; i < 3; i++){
+    if(grid[i][0] && grid[i][0] === grid[i][1] && grid[i][0] === grid[i][2]){
+      return true;
+    }
+    if(grid[0][i] && grid[0][i] === grid[1][i] && grid[0][i] === grid[2][i]){
+      return true;
+    }
+  }
+  if(grid[0][0] && grid[0][0] === grid[1][1] && grid[0][0] === grid[2][2]){
+    return true;
+  }
+  if(grid[0][2] && grid[0][2] === grid[1][1] && grid[0][2] === grid[2][0]){
+    return true;
+  }
+  return false;
+}
 
 httpServer.listen(process.env.PORT, () => {
   console.log(`Example app listening on port ${process.env.PORT}!`)

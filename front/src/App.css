@@ -40,3 +40,25 @@
 .read-the-docs {
   color: #888;
 }
+
+.grid {
+  display: flex;
+  flex-direction: column;
+  margin: auto;
+  border: solid 1px #ccc;
+  height: 200px;
+  width: 200px;
+}
+
+.row {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  border: solid 1px #ccc;
+  
+}
+
+.cell {
+  flex: 1;
+  border: solid 1px #ccc;
+}

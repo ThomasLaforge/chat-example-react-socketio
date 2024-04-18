@@ -3,58 +3,66 @@ import './App.css'
 import { socket } from './modules/socket'
 
 function App() {
-  const [endGameSentence, setEndGameSentence] = useState('')
-  const [gameInfo, setGameInfo] = useState('En attente de joueurs')
-  const [guessNumber, setGuessNumber] = useState("")
+  const [grid, setGrid] = useState<(null | 'X' | 'O')[][]>([
+    [null, null, null],
+    [null, null, null],
+    [null, null, null],
+  ])
+  const [gameInfo, setGameInfo] = useState<string>('En attente de joueurs')
 
   useEffect(() => {
     socket.off('startGame')
-    socket.off('hint')
-    socket.off('endGame')
+    socket.off('played')
+    socket.off('win')
+    socket.off('lost')
 
-    socket.on('startGame', () => {
-      console.log('start game')
-      setGameInfo('Game started - find the number between 1 and 100')
+    socket.on('startGame', (isPlayerToPlay: boolean) => {
+      setGameInfo(isPlayerToPlay ? "C'est à vous de jouer" : "C'est à votre adversaire de jouer")
     })
 
-    socket.on('hint', (hint: string) => {
-      setGameInfo(hint)
+    socket.on('played', (newGrid: (null | 'X' | 'O')[][], isPlayerToPlay: boolean) => {
+      setGrid(newGrid)
+      setGameInfo(isPlayerToPlay ? "C'est à vous de jouer" : "C'est à votre adversaire de jouer")
     })
 
-    socket.on('endGame', (sentence: string) => {
-      setEndGameSentence(sentence)
+    socket.on('win', () => {
+      setGameInfo('Vous avez gagné')
     })
-    
+
+    socket.on('lost', () => {
+      setGameInfo('Vous avez perdu')
+    })
+
     return () => {
       socket.off('startGame')
-      socket.off('hint')
-      socket.off('endGame')
+      socket.off('played')
+      socket.off('win')
+      socket.off('lost')
     }
   }, [])
 
-  const handleChangeGuessNumber = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setGuessNumber(e.target.value)
-  }
-
-  const handleSendGuessNumber = () => {
-    socket.emit('guessNumber', parseInt(guessNumber))
+  const handleClickCell = (i: number, j: number) => {
+    if (gameInfo === "C'est à vous de jouer") {
+      socket.emit('play', i, j)
+    }
   }
 
   return (
     <div>
-      {endGameSentence !== '' ? (
-        <div>{endGameSentence}</div>
-      ) : (
-        <div>
-          <div>{gameInfo}</div>
-          <input 
-            type="text" 
-            value={guessNumber} 
-            onChange={handleChangeGuessNumber} 
-          />
-          <button onClick={handleSendGuessNumber}>Try</button>
+      <div>
+        <div>{gameInfo}</div>
+        <div className="grid">
+          {grid.map((row, rowIndex) => (
+            <div key={rowIndex} className="row">
+              {row.map((cell, cellIndex) => (
+                <div key={cellIndex} onClick={() => handleClickCell(rowIndex, cellIndex)} className="cell">
+                  {cell}
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
-      )}  
+      </div>
     </div>
   )
 }
